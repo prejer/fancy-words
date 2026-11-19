@@ -55,6 +55,19 @@
   .empty{color:var(--muted);text-align:center;padding:30px}
   .hidden{display:none}
   .t5{background:var(--t5)} .t4{background:var(--t4)} .t3{background:var(--t3)} .t2{background:var(--t2)} .t1{background:var(--t1)}
+  .dhead{display:flex;justify-content:space-between;align-items:center;background:var(--panel);border-radius:12px;padding:12px 14px;margin-bottom:12px}
+  .dhead b{display:block;font:700 18px "Space Grotesk"} .dhead small{color:var(--muted);font-size:12px}
+  .streak{text-align:center} .streak b{font-size:24px;color:var(--accent)}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:10px}
+  .card .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:12px;color:var(--muted)}
+  .card .sent{font-size:16px;line-height:1.9}
+  .card input{background:var(--bg);border:0;border-bottom:2px solid var(--accent);color:var(--text);font:600 15px Inter;padding:2px 6px;width:min(100%,230px);border-radius:4px 4px 0 0}
+  .card input:disabled{opacity:1}
+  .card.ok{border-color:var(--t2)} .card.ok input{border-color:var(--t2);color:var(--t2)}
+  .card.bad{border-color:var(--t5)} .card.bad input{border-color:var(--t5);color:var(--t5);text-decoration:line-through}
+  .hintbtn{border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:8px;padding:3px 8px;font:600 12px Inter;cursor:pointer}
+  .hint,.answer{font-size:13px;margin-top:8px;color:var(--muted)} .answer b{color:var(--t2)}
+  .grid{font-size:28px;letter-spacing:4px;margin-bottom:6px}
   footer{color:var(--muted);font-size:12px;text-align:center;margin-top:30px}
 </style>
 </head>
@@ -67,6 +80,7 @@
 
   <div class="tabs">
     <button data-tab="ranking" class="on">🏆 Ranking</button>
+    <button data-tab="daily">🔥 Daily</button>
     <button data-tab="calc">✍️ Policz writing</button>
   </div>
 
@@ -90,6 +104,22 @@
     <div class="list" id="list"></div>
   </section>
 
+  <!-- DAILY CHALLENGE -->
+  <section id="daily" class="hidden">
+    <div class="dhead">
+      <div><b id="dDate"></b><small>5 luk · wpisz brakujące słówko z listy</small></div>
+      <div class="streak"><b id="dStreak">0</b><small>🔥 seria</small></div>
+    </div>
+    <div id="dCards"></div>
+    <button class="btn" id="dCheck">Sprawdź odpowiedzi</button>
+    <div id="dResult" class="hidden">
+      <div class="score"><b id="dScore">0</b><span id="dScoreLbl" style="color:var(--muted)"></span></div>
+      <div class="grid" id="dGrid"></div>
+      <button class="btn" id="dShare">Kopiuj wynik dla klasy</button>
+      <p style="color:var(--muted);font-size:13px">Następny challenge za <span id="dNext"></span></p>
+    </div>
+  </section>
+
   <!-- KALKULATOR -->
   <section id="calc" class="hidden">
     <p style="color:var(--muted);margin-top:0">Wklej swój writing, a policzę, ile słówek z listy użyłeś i ile masz punktów.</p>
@@ -104,6 +134,7 @@
 </div>
 
 <script src="words.js"></script>
+<script src="sentences.js"></script>
 <script>
 const WORDS = (window.WORDS || []).map((w, i) => ({ ...w, id: i }));
 const TIERS = { 5: "Legenda", 4: "Mocne", 3: "Solidne", 2: "OK", 1: "Podstawa" };
@@ -120,8 +151,7 @@ const $ = id => document.getElementById(id);
 // zakładki
 document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => {
   document.querySelectorAll(".tabs button").forEach(x => x.classList.toggle("on", x === b));
-  $("ranking").classList.toggle("hidden", b.dataset.tab !== "ranking");
-  $("calc").classList.toggle("hidden", b.dataset.tab !== "calc");
+  ["ranking", "daily", "calc"].forEach(t => $(t).classList.toggle("hidden", b.dataset.tab !== t));
 });
 
 // filtry
@@ -207,7 +237,82 @@ $("saveUses").onclick = () => {
   setTimeout(() => $("saveUses").textContent = "Zapisz użyte słówka do rankingu", 1800);
 };
 
-renderChips(); render(); scoreEssay();
+
+// ── DAILY CHALLENGE ──
+const SENT = window.SENTENCES || {};
+const todayKey = () => { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0"); };
+function rng(seedStr) { let h = 1779033703 ^ seedStr.length; for (const c of seedStr) { h = Math.imul(h ^ c.charCodeAt(0), 3432918353); h = h << 13 | h >>> 19; }
+  return () => { h = Math.imul(h ^ h >>> 16, 2246822507); h = Math.imul(h ^ h >>> 13, 3266489909); return ((h ^= h >>> 16) >>> 0) / 4294967296; }; }
+function dailyWords(key) {
+  // ten sam zestaw dla wszystkich danego dnia; zawsze co najmniej 2 słówka za 4–5 pkt
+  const r = rng("fancy-" + key), pool = WORDS.filter(w => SENT[w.en]);
+  const hard = pool.filter(w => w.pts >= 4), rest = pool.filter(w => w.pts < 4);
+  const take = (arr, n) => { const a = [...arr], out = []; while (out.length < n && a.length) out.push(a.splice(Math.floor(r() * a.length), 1)[0]); return out; };
+  return [...take(hard, 2), ...take(rest, 3)].sort(() => r() - .5);
+}
+const norm = s => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[’‘`]/g, "'").replace(/[-\s]+/g, " ").replace(/[.,!?]/g, "").trim();
+const answerOf = w => Array.isArray(SENT[w.en]) ? SENT[w.en][1] : w.en;
+const sentenceOf = w => Array.isArray(SENT[w.en]) ? SENT[w.en][0] : SENT[w.en];
+const isRight = (w, val) => [answerOf(w), ...(Array.isArray(SENT[w.en]) ? [] : [w.en, ...(w.alt || [])])].some(a => norm(a) === norm(val));
+
+let dState = {};
+try { dState = JSON.parse(localStorage.getItem("fw-daily") || "{}"); } catch (e) {}
+const saveDaily = () => { try { localStorage.setItem("fw-daily", JSON.stringify(dState)); } catch (e) {} };
+const DKEY = todayKey(), DWORDS = dailyWords(DKEY);
+const today = dState[DKEY] || (dState[DKEY] = { answers: ["", "", "", "", ""], hints: [false, false, false, false, false], done: false });
+
+function streak() {
+  let n = 0, d = new Date();
+  if (!dState[DKEY]?.done) d.setDate(d.getDate() - 1);
+  while (true) { const k = d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+    if (dState[k]?.done) { n++; d.setDate(d.getDate() - 1); } else return n; }
+}
+const ptsFor = (w, i) => today.hints[i] ? Math.ceil(w.pts / 2) : w.pts;
+
+function renderDaily() {
+  $("dDate").textContent = "Challenge " + new Date().toLocaleDateString("pl-PL", { day: "numeric", month: "long" });
+  $("dStreak").textContent = streak();
+  const safe = s => s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  $("dCards").innerHTML = DWORDS.map((w, i) => {
+    const ok = today.done && isRight(w, today.answers[i]);
+    const [a, b] = sentenceOf(w).split("___");
+    return `<div class="card ${today.done ? (ok ? "ok" : "bad") : ""}">
+      <div class="top"><span>${i + 1}/5 · <mark class="t${w.pts}">${ptsFor(w, i)} pkt</mark></span>
+        ${today.done || today.hints[i] ? "" : `<button class="hintbtn" data-i="${i}">💡 Podpowiedź (½ pkt)</button>`}</div>
+      <div class="sent">${safe(a)}<input data-i="${i}" value="${safe(today.answers[i])}" ${today.done ? "disabled" : ""} autocomplete="off" autocapitalize="off" spellcheck="false">${safe(b)}</div>
+      ${today.hints[i] ? `<div class="hint">💡 ${safe(w.pl)} · zaczyna się na „${answerOf(w)[0]}”, ${answerOf(w).split(" ").length} ${answerOf(w).split(" ").length > 1 ? "słowa" : "słowo"}</div>` : ""}
+      ${today.done && !ok ? `<div class="answer">Poprawnie: <b>${safe(answerOf(w))}</b></div>` : ""}
+    </div>`;
+  }).join("");
+  $("dCards").querySelectorAll("input").forEach(inp => inp.oninput = () => { today.answers[+inp.dataset.i] = inp.value; saveDaily(); });
+  $("dCards").querySelectorAll(".hintbtn").forEach(b => b.onclick = () => { today.hints[+b.dataset.i] = true; saveDaily(); renderDaily(); });
+  $("dCheck").classList.toggle("hidden", today.done);
+  $("dResult").classList.toggle("hidden", !today.done);
+  if (today.done) {
+    const results = DWORDS.map((w, i) => isRight(w, today.answers[i]));
+    const score = DWORDS.reduce((s, w, i) => s + (results[i] ? ptsFor(w, i) : 0), 0);
+    const max = DWORDS.reduce((s, w) => s + w.pts, 0);
+    $("dScore").textContent = score;
+    $("dScoreLbl").textContent = `/ ${max} pkt · ${results.filter(Boolean).length}/5 poprawnie`;
+    $("dGrid").textContent = results.map((r, i) => r ? (today.hints[i] ? "🟨" : "🟩") : "🟥").join("");
+    today.score = score; today.max = max; saveDaily();
+  }
+}
+$("dCheck").onclick = () => {
+  if (today.answers.some(a => !a.trim()) && !$("dCheck").dataset.warned) {
+    $("dCheck").dataset.warned = 1; $("dCheck").textContent = "Masz puste luki – kliknij jeszcze raz, żeby sprawdzić"; return; }
+  today.done = true; saveDaily(); renderDaily();
+};
+$("dShare").onclick = () => {
+  const txt = `Fancy Words Daily ${DKEY}\n${$("dGrid").textContent} ${today.score}/${today.max} pkt 🔥${streak()}`;
+  navigator.clipboard.writeText(txt).then(() => $("dShare").textContent = "Skopiowano ✓", () => $("dShare").textContent = txt);
+};
+function tick() { const n = new Date(), m = new Date(n); m.setHours(24, 0, 0, 0); const s = Math.floor((m - n) / 1000);
+  $("dNext").textContent = `${Math.floor(s / 3600)} h ${Math.floor(s % 3600 / 60)} min`;
+  if (todayKey() !== DKEY) location.reload(); }
+setInterval(tick, 30000); tick();
+
+renderChips(); render(); scoreEssay(); renderDaily();
 </script>
 </body>
 </html>
