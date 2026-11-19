@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fancy Words – słówka za punkty</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#181b22; --panel2:#20242d; --line:#2b303b;
+    --text:#eef0f4; --muted:#9097a6; --accent:#ffcc33;
+    --t5:#ff5e7e; --t4:#ff9f43; --t3:#ffd23f; --t2:#4dd4ac; --t1:#7aa7ff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,sans-serif;line-height:1.45}
+  .wrap{max-width:900px;margin:0 auto;padding:20px 16px 60px}
+  header h1{font-family:"Space Grotesk",sans-serif;font-size:clamp(28px,6vw,44px);margin:8px 0 4px;letter-spacing:-.02em}
+  header h1 span{color:var(--accent)}
+  header p{color:var(--muted);margin:0 0 18px}
+  .tabs{display:flex;gap:6px;background:var(--panel);padding:5px;border-radius:12px;margin-bottom:16px}
+  .tabs button{flex:1;border:0;background:transparent;color:var(--muted);padding:10px;border-radius:9px;font:600 14px Inter;cursor:pointer}
+  .tabs button.on{background:var(--panel2);color:var(--text)}
+  .controls{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+  input[type=search],select{background:var(--panel);border:1px solid var(--line);color:var(--text);padding:10px 12px;border-radius:10px;font:14px Inter}
+  input[type=search]{flex:1 1 200px}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+  .chip{border:1px solid var(--line);background:var(--panel);color:var(--muted);padding:6px 11px;border-radius:999px;font:600 13px Inter;cursor:pointer}
+  .chip.on{color:#111;border-color:transparent}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+  .stat{background:var(--panel);border-radius:12px;padding:12px}
+  .stat b{display:block;font:700 22px "Space Grotesk"}
+  .stat small{color:var(--muted)}
+  .list{display:flex;flex-direction:column;gap:8px}
+  .row{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px}
+  .rank{width:28px;text-align:center;color:var(--muted);font:600 13px "Space Grotesk"}
+  .pts{min-width:52px;text-align:center;border-radius:10px;padding:6px 4px;font:700 18px "Space Grotesk";color:#111}
+  .pts small{display:block;font:600 10px Inter;opacity:.7}
+  .body{flex:1;min-width:0}
+  .en{font:600 16px "Space Grotesk"}
+  .pl{color:var(--muted);font-size:14px}
+  .cat{font-size:11px;color:var(--muted);border:1px solid var(--line);padding:1px 7px;border-radius:999px;margin-left:6px;vertical-align:middle}
+  .use{display:flex;flex-direction:column;align-items:center;gap:2px}
+  .use button{border:0;background:var(--panel2);color:var(--text);width:38px;height:38px;border-radius:10px;font-size:18px;cursor:pointer}
+  .use button:active{transform:scale(.92)}
+  .use small{color:var(--muted);font-size:11px}
+  textarea{width:100%;min-height:200px;background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:12px;padding:12px;font:15px Inter;resize:vertical}
+  .score{display:flex;align-items:baseline;gap:10px;margin:14px 0 8px}
+  .score b{font:700 44px "Space Grotesk";color:var(--accent)}
+  .preview{background:var(--panel);border-radius:12px;padding:14px;white-space:pre-wrap;line-height:1.7}
+  mark{border-radius:5px;padding:0 3px;color:#111;font-weight:600}
+  .found{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 14px}
+  .found span{background:var(--panel2);border-radius:8px;padding:4px 9px;font-size:13px}
+  .btn{border:0;background:var(--accent);color:#111;padding:10px 14px;border-radius:10px;font:700 14px Inter;cursor:pointer;margin-top:10px}
+  .empty{color:var(--muted);text-align:center;padding:30px}
+  .hidden{display:none}
+  .t5{background:var(--t5)} .t4{background:var(--t4)} .t3{background:var(--t3)} .t2{background:var(--t2)} .t1{background:var(--t1)}
+  footer{color:var(--muted);font-size:12px;text-align:center;margin-top:30px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Fancy <span>Words</span></h1>
+    <p>Słówka na writing. Im bardziej wypasione, tym więcej punktów.</p>
+  </header>
+
+  <div class="tabs">
+    <button data-tab="ranking" class="on">🏆 Ranking</button>
+    <button data-tab="calc">✍️ Policz writing</button>
+  </div>
+
+  <!-- RANKING -->
+  <section id="ranking">
+    <div class="stats">
+      <div class="stat"><b id="sCount">0</b><small>słówek</small></div>
+      <div class="stat"><b id="sTop">0</b><small>za 5 pkt</small></div>
+      <div class="stat"><b id="sUsed">0</b><small>Twoich użyć</small></div>
+    </div>
+    <div class="controls">
+      <input type="search" id="q" placeholder="Szukaj po angielsku lub polsku…">
+      <select id="sort">
+        <option value="pts">Najwięcej punktów</option>
+        <option value="used">Najczęściej używane</option>
+        <option value="az">A → Z</option>
+      </select>
+      <select id="cat"><option value="">Wszystkie kategorie</option></select>
+    </div>
+    <div class="chips" id="tierChips"></div>
+    <div class="list" id="list"></div>
+  </section>
+
+  <!-- KALKULATOR -->
+  <section id="calc" class="hidden">
+    <p style="color:var(--muted);margin-top:0">Wklej swój writing, a policzę, ile słówek z listy użyłeś i ile masz punktów.</p>
+    <textarea id="essay" placeholder="Paste your writing here… e.g. On balance, binge-watching is an ordeal for my unkempt nephew…"></textarea>
+    <div class="score"><b id="total">0</b><span id="totalLbl" style="color:var(--muted)">pkt · 0 słówek</span></div>
+    <div class="found" id="found"></div>
+    <div class="preview" id="preview"></div>
+    <button class="btn" id="saveUses">Zapisz użyte słówka do rankingu</button>
+  </section>
+
+  <footer>Prototyp · słówka z zeszytu · punkty edytujesz w <code>words.js</code></footer>
+</div>
+
+<script src="words.js"></script>
+<script>
+const WORDS = (window.WORDS || []).map((w, i) => ({ ...w, id: i }));
+const TIERS = { 5: "Legenda", 4: "Mocne", 3: "Solidne", 2: "OK", 1: "Podstawa" };
+
+// licznik użyć (lokalnie w przeglądarce)
+let uses = {};
+try { uses = JSON.parse(localStorage.getItem("fw-uses") || "{}"); } catch (e) {}
+const saveUses = () => { try { localStorage.setItem("fw-uses", JSON.stringify(uses)); } catch (e) {} };
+const usesOf = w => uses[w.en] || 0;
+
+let tier = 0;
+const $ = id => document.getElementById(id);
+
+// zakładki
+document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => {
+  document.querySelectorAll(".tabs button").forEach(x => x.classList.toggle("on", x === b));
+  $("ranking").classList.toggle("hidden", b.dataset.tab !== "ranking");
+  $("calc").classList.toggle("hidden", b.dataset.tab !== "calc");
+});
+
+// filtry
+[...new Set(WORDS.map(w => w.cat))].sort().forEach(c => $("cat").add(new Option(c, c)));
+function renderChips() {
+  $("tierChips").innerHTML = [0, 5, 4, 3, 2, 1].map(t =>
+    `<button class="chip ${tier === t ? "on " + (t ? "t" + t : "") : ""}" data-t="${t}" ${tier === t && !t ? 'style="background:var(--text)"' : ""}>${t ? t + " pkt · " + TIERS[t] : "Wszystkie"}</button>`
+  ).join("");
+  $("tierChips").querySelectorAll(".chip").forEach(c => c.onclick = () => { tier = +c.dataset.t; renderChips(); render(); });
+}
+
+function render() {
+  const q = $("q").value.trim().toLowerCase();
+  const cat = $("cat").value, sort = $("sort").value;
+  let list = WORDS.filter(w =>
+    (!tier || w.pts === tier) && (!cat || w.cat === cat) &&
+    (!q || w.en.toLowerCase().includes(q) || w.pl.toLowerCase().includes(q)));
+  list.sort(sort === "az" ? (a, b) => a.en.localeCompare(b.en)
+    : sort === "used" ? (a, b) => usesOf(b) - usesOf(a) || b.pts - a.pts
+    : (a, b) => b.pts - a.pts || usesOf(b) - usesOf(a) || a.en.localeCompare(b.en));
+
+  $("list").innerHTML = list.length ? list.map((w, i) => `
+    <div class="row">
+      <div class="rank">${i + 1}</div>
+      <div class="pts t${w.pts}">${w.pts}<small>pkt</small></div>
+      <div class="body"><div class="en">${w.en}<span class="cat">${w.cat}</span></div><div class="pl">${w.pl}</div></div>
+      <div class="use"><button data-id="${w.id}" title="Użyłem w writingu">＋</button><small>${usesOf(w)}×</small></div>
+    </div>`).join("") : `<div class="empty">Nic nie znaleziono 🤷</div>`;
+  $("list").querySelectorAll(".use button").forEach(b => b.onclick = () => {
+    const w = WORDS[b.dataset.id]; uses[w.en] = usesOf(w) + 1; saveUses(); render();
+  });
+
+  $("sCount").textContent = WORDS.length;
+  $("sTop").textContent = WORDS.filter(w => w.pts === 5).length;
+  $("sUsed").textContent = Object.values(uses).reduce((a, b) => a + b, 0);
+}
+$("q").oninput = render; $("sort").onchange = render; $("cat").onchange = render;
+
+// ── kalkulator writingu ──
+const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function patternFor(phrase) {
+  // każde słowo może mieć końcówkę (s, ed, ing…); myślnik = myślnik/spacja/nic
+  const parts = phrase.toLowerCase().split(/\s+/).map(tok =>
+    tok.split("-").map(esc).join("[-\\s]?") + "(?:s|es|ed|d|ing|'s)?");
+  return parts.join("\\s+");
+}
+// dłuższe frazy najpierw, żeby "noughts and crosses" wygrało z krótszymi
+const MATCHERS = WORDS.map(w => ({
+  w, re: new RegExp("(?<![\\w-])(?:" + [w.en, ...(w.alt || [])].map(patternFor).join("|") + ")(?![\\w-])", "gi"),
+  len: w.en.length
+})).sort((a, b) => b.len - a.len);
+
+let lastFound = [];
+function scoreEssay() {
+  const text = $("essay").value;
+  const taken = []; // [start,end,word]
+  MATCHERS.forEach(({ w, re }) => {
+    re.lastIndex = 0; let m;
+    while ((m = re.exec(text))) {
+      const s = m.index, e = s + m[0].length;
+      if (!taken.some(t => s < t[1] && e > t[0])) taken.push([s, e, w]);
+    }
+  });
+  taken.sort((a, b) => a[0] - b[0]);
+  const unique = [...new Map(taken.map(t => [t[2].en, t[2]])).values()];
+  lastFound = unique;
+  const total = unique.reduce((s, w) => s + w.pts, 0); // każde słówko liczy się raz
+  $("total").textContent = total;
+  $("totalLbl").textContent = `pkt · ${unique.length} ${unique.length === 1 ? "słówko" : "słówek"}`;
+  $("found").innerHTML = unique.sort((a, b) => b.pts - a.pts)
+    .map(w => `<span><mark class="t${w.pts}">${w.pts}</mark> ${w.en}</span>`).join("");
+  let html = "", pos = 0;
+  const safe = s => s.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+  taken.forEach(([s, e, w]) => { html += safe(text.slice(pos, s)) + `<mark class="t${w.pts}">${safe(text.slice(s, e))}</mark>`; pos = e; });
+  html += safe(text.slice(pos));
+  $("preview").innerHTML = text ? html : `<span style="color:var(--muted)">Tu pojawi się Twój tekst z podświetlonymi słówkami.</span>`;
+}
+$("essay").oninput = scoreEssay;
+$("saveUses").onclick = () => {
+  if (!lastFound.length) return;
+  lastFound.forEach(w => uses[w.en] = usesOf(w) + 1); saveUses(); render();
+  $("saveUses").textContent = `Zapisano ${lastFound.length} ✓`;
+  setTimeout(() => $("saveUses").textContent = "Zapisz użyte słówka do rankingu", 1800);
+};
+
+renderChips(); render(); scoreEssay();
+</script>
+</body>
+</html>
